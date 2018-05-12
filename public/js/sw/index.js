@@ -49,6 +49,11 @@ self.addEventListener('fetch', function(event) {
     }
     // TODO: respond to avatar urls by responding with
     // the return value of serveAvatar(event.request)
+    if (requestUrl.pathname.startsWith('/avatars/')) {
+      event.respondWith(serveAvatar(event.request));
+      return;
+    }
+
   }
 
   event.respondWith(
@@ -71,6 +76,34 @@ function serveAvatar(request) {
   // to update the entry in the cache.
   //
   // Note that this is slightly different to servePhoto!
+
+  return caches.open(contentImgsCache).then(function(cache) {
+    return cache.match(storageUrl).then(function(cachedResponse) {
+      
+      if (cachedResponse){
+
+        //grab the avatar from online to update the cache
+        return fetch(request).then(function(networkResponse) {
+
+          //update the cache
+          cache.put(storageUrl, networkResponse);         
+          return cachedResponse;
+        }).catch(function(e){
+          return cachedResponse;
+          console.log("network error here");
+        });
+      } 
+
+      //grab avatar from network
+      return fetch(request).then(function(networkResponse) {
+        cache.put(storageUrl, networkResponse.clone());
+        return networkResponse;
+      });
+
+    });
+  });
+
+
 }
 
 function servePhoto(request) {
