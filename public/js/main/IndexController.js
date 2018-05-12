@@ -14,6 +14,13 @@ function openDatabase() {
   // that uses 'id' as its key
   // and has an index called 'by-date', which is sorted
   // by the 'time' property
+
+  var dbPromise = idb.open('wittr', 1, function(upgradeDb) {
+    var keyValStore = upgradeDb.createObjectStore('wittrs', { keyPath: 'id' });
+    keyValStore.createIndex('by-date', 'time');
+  });
+
+  return dbPromise;
 }
 
 export default function IndexController(container) {
@@ -130,12 +137,33 @@ IndexController.prototype._openSocket = function() {
 IndexController.prototype._onSocketMessage = function(data) {
   var messages = JSON.parse(data);
 
+
   this._dbPromise.then(function(db) {
     if (!db) return;
 
     // TODO: put each message into the 'wittrs'
     // object store.
-  });
+
+    // add message to "wittrs"
+      var tx = db.transaction('wittrs', 'readwrite');
+      var dataStore = tx.objectStore('wittrs');
+
+      var msgData = messages[0];
+
+      dataStore.put({
+        avatar: msgData.avatar,
+        body: msgData.body,
+        id: msgData.id,
+        name: msgData.name,
+        time: msgData.time
+      });
+
+
+      return tx.complete;
+
+  }).then(function() {
+      console.log('Messages added to db index');
+    });
 
   this._postsView.addPosts(messages);
 };
