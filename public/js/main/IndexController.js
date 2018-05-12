@@ -164,6 +164,47 @@ IndexController.prototype._cleanImageCache = function() {
     //
     // Open the 'wittr-content-imgs' cache, and delete any entry
     // that you no longer need.
+    var tx = db.transaction('wittrs');
+    var store = tx.objectStore('wittrs');
+
+     store.getAll().then(function(messages){
+      //console.log(messages);
+
+      var arrImages = [];
+      messages.forEach(function(message){
+        // populate the array of avatars
+        arrImages.push(message.avatar);
+
+        if(message.photo){
+          arrImages.push(message.photo);
+        }
+
+      });
+
+      //console.log(arrImages);
+
+       caches.open('wittr-content-imgs').then(function(cache){
+         cache.keys().then(function(requests){
+
+          //if any photo request is not found in arrAvatars above, delete that cache
+          requests.forEach(function(request){
+
+            //get the path of this request
+            var requestUrl = new URL(request.url);
+            var pathname = requestUrl.pathname; //eg. /foo/bar
+
+            if(!arrImages.includes(pathname)){
+              cache.delete(request);
+            }
+            
+          });
+
+
+        });
+      });
+
+    });
+
   });
 };
 
